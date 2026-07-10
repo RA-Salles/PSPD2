@@ -19,6 +19,14 @@ message AuthResponse {
   string access_level = 1;      // "FULL", "PARTIAL", "ANONYMIZED", "AGGREGATED", "DENY"
 }
 
+message AuthLogin {
+  string user = 1; // We'll need 
+}
+
+message AuthToken {
+  string jwt_token = 1;
+}
+
 // 2. SERVIÇO DE DADOS DE PACIENTES
 
 service PatientDataService {
