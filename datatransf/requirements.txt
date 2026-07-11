@@ -1,4 +1,0 @@
-grpcio==1.82.1
-grpcio-tools==1.82.1
-protobuf==7.35.0
-prometheus-client==0.25.0

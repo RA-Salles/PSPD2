@@ -7,12 +7,27 @@ from psycopg2.extras import RealDictCursor
 import patient_pb2
 import patient_pb2_grpc
 
+import transform_pb2
+import transform_pb2_grpc
+
 
 # Configurações do Banco de Dados 
 DB_HOST = "localhost" 
 DB_NAME = "pseudopep_g02"
 DB_USER = "grupo02_user"
 DB_PASS = "123@g02"
+
+# Conexão do cliente gRPC pro Data Transform
+DATA_TRANSFORM_ADDRESS = "localhost:50053"
+
+#Quando formos migrar pro kubernetes:
+# DATA_TRANSFORM_ADDRESS = "data-transform:50053"
+
+transform_channel = grpc.insecure_channel(DATA_TRANSFORM_ADDRESS)
+
+transform_stub = transform_pb2_grpc.DataTransformServiceStub(
+    transform_channel
+)
 
 
 # Lógica do Microsserviço
@@ -64,9 +79,26 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
                 context.set_details("Paciente nao encontrado no banco de dados.")
                 return patient_pb2.PatientDataResponse()
 
-            # Converte o dicionário final para JSON e envia pelo gRPC
-            payload_em_json = json.dumps(dados_empacotados, default=str)
-            return patient_pb2.PatientDataResponse(raw_database_json=payload_em_json)
+            # REFATORADO - Converte os registros do banco para JSON
+            payload_em_json = json.dumps(
+                dados_empacotados,
+                default=str,
+                ensure_ascii=False
+            )
+
+            # Envia os dados brutos para o Data Transform
+            resposta_transformada = transform_stub.TransformToFHIR(
+                transform_pb2.TransformRequest(
+                    raw_database_json=payload_em_json,
+                    access_level=nivel_acesso_concedido
+                ),
+                timeout=10
+            )
+
+            # Retorna o JSON FHIR ao chamador
+            return patient_pb2.PatientDataResponse(
+                raw_database_json=resposta_transformada.fhir_json_payload
+            )
 
         except Exception as erro_execucao:
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -104,7 +136,23 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
                     "lote_coorte": lote_atual
                 }
                 
-                yield patient_pb2.PatientDataResponse(raw_database_json=json.dumps(pacote_resposta, default=str))
+                payload_em_json = json.dumps(
+                pacote_resposta,
+                default=str,
+                ensure_ascii=False
+            )
+
+            resposta_transformada = transform_stub.TransformToFHIR(
+                transform_pb2.TransformRequest(
+                    raw_database_json=payload_em_json,
+                    access_level=nivel_acesso_concedido
+                ),
+                timeout=10
+            )
+
+            yield patient_pb2.PatientDataResponse(
+                raw_database_json=resposta_transformada.fhir_json_payload
+            )
                 
             cursor.close()
             conexao.close()
