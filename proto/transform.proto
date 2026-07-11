@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package hospital.transform;
+
+service DataTransformService {
+  // recebe dados brutos, anonimiza e converte para HL7/FHIR
+  rpc TransformToFHIR (TransformRequest) returns (TransformResponse);
+}
+
+message TransformRequest {
+  string raw_database_json = 1; 
+  string access_level = 2;      
+}
+
+message TransformResponse {
+  string fhir_json_payload = 1; 
+}
