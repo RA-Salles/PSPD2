@@ -1,0 +1,18 @@
+
+
+1 - anonimizar - conversa com o Auth pra verificar se o usuário pode
+acessar a informação 
+
+    verify_user()
+        get_auth_profile_data() --> requer conversar com auth, fazer cópia de dados temporária em formato comparável com user requests ou uma tabela pré-montada de permissões de acordo com as profiles do enunciado
+        compare_authdata_to_user_requests(auth_profile_data)
+            okedoke() --> prossegue pra transformação e agregação
+            nopedope() --> handler da primeira info específica que o usuário nn tem permissão e encerrar o código
+
+
+
+2 - transformar dados em formato HL7/FHIR antes de serem entregues
+aos usuários.
+[POSTGRES DATA -> HL7/FHIR -> JSON(?)]
+
+3 - agregar e enviar pro gateway em formato legível
