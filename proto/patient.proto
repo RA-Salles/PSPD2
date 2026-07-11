@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package hospital.patient;
+
+service PatientDataService {
+  // Chamada Unaria: buscar um paciente específico
+  rpc GetSinglePatientData (SinglePatientRequest) returns (PatientDataResponse);
+  
+  // Server Streaming: Para buscar coortes
+  rpc StreamCohortData (CohortRequest) returns (stream PatientDataResponse);
+}
+
+message SinglePatientRequest {
+  string patient_id = 1;
+  string access_level = 2;
+}
+
+message CohortRequest {
+  string project_id = 1;
+  string condition_code = 2;
+  string access_level = 3;
+}
+
+message PatientDataResponse {
+  string raw_database_json = 1; 
+}

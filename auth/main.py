@@ -1,13 +1,15 @@
 import grpc
 from concurrent import futures
 import jwt
-
-import hospital_pb2
-import hospital_pb2_grpc
+import auth_pb2
+import auth_pb2_grpc
 
 SECRET_KEY = "PSPD2SecretKey"  # Chave secreta para decodificar o JWT
 
-class AutenticacaoServicer(hospital_pb2_grpc.AuthServiceServicer):
+import auth_pb2
+import auth_pb2_grpc
+
+class AuthServiceServicer(auth_pb2_grpc.AuthServiceServicer):
     def VerifyAccess(self, request, context):
         # campos da mensagem proto
         token = request.jwt_token
@@ -27,17 +29,17 @@ class AutenticacaoServicer(hospital_pb2_grpc.AuthServiceServicer):
             else:
                 nivel_acesso = "DENY"
                 
-            return hospital_pb2.AuthResponse(access_level=nivel_acesso)
+            return auth_pb2.AuthResponse(access_level=nivel_acesso)
             
         except jwt.ExpiredSignatureError:
-             return hospital_pb2.AuthResponse(access_level="DENY")
+             return auth_pb2.AuthResponse(access_level="DENY")
         except jwt.InvalidTokenError:
-             return hospital_pb2.AuthResponse(access_level="DENY")
+             return auth_pb2.AuthResponse(access_level="DENY")
 
 def serve():
     # Inicia o servidor na porta 50051
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    hospital_pb2_grpc.add_AuthServiceServicer_to_server(AutenticacaoServicer(), server)
+    auth_pb2_grpc.add_AuthServiceServicer_to_server(AuthServiceServicer(), server)
     server.add_insecure_port('[::]:50051')
     print("Microsserviço de Autenticação rodando na porta 50051...")
     server.start()

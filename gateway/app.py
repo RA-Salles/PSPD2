@@ -1,14 +1,14 @@
 from flask import Flask, request, jsonify
 import grpc
 
-import hospital_pb2
-import hospital_pb2_grpc
+import auth_pb2
+import auth_pb2_grpc
 
 app = Flask(__name__)
 
 # Configura o canalpara conversar com Auth
 auth_channel = grpc.insecure_channel('localhost:50051')
-auth_stub = hospital_pb2_grpc.AuthServiceStub(auth_channel)
+auth_stub = auth_pb2_grpc.AuthServiceStub(auth_channel)
 
 @app.route('/api/pacientes/<paciente_id>', methods=['GET'])
 def buscar_paciente(paciente_id):
@@ -22,7 +22,7 @@ def buscar_paciente(paciente_id):
     # faz a chamada para o auth
     try:
         # Monta a requisição com o proto
-        auth_req = hospital_pb2.AuthRequest(
+        auth_req = auth_pb2.AuthRequest(
             jwt_token=token_jwt,
             requested_scope="ResumoClinico",
             target_id=paciente_id
