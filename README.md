@@ -29,5 +29,5 @@ python app.py
 
 3. Execute o arquivo teste em um quinto terminal:
 ```
-python teste_data_transform
+python teste_data_transform.py
 ```
