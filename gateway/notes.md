@@ -23,7 +23,9 @@ and that's it!
 
 Graciously provided by [skycloak, in this article!](https://skycloak.io/blog/keycloak-flask-python-authentication/)
 
+## warning
 
+When running, remember to configure the .env thingy!
 
 
 
