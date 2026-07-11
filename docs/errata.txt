@@ -1,0 +1,14 @@
+Uma notícia foi cadastrada na turma virtual: FGA0244 - PROGRAMAÇÃO PARA SISTEMAS PARALELOS E DISTRIBUÍDOS (60h) - Turma: 02 (2026.1)
+Sobre o acesso ao keycloak - ERRATA
+
+ERRATA sobre as dicas de uso do Cluster K8S:
+
+No item (d) Sobre autenticação em servidor OAUTH2, o endereço de acesso a ser usado é https://kiriland.unb.br/keycloak/realms/grupoXX/account/
+
+Cada grupo deve substituir o XX pelo número do grupo. Por exemplo o grupo 01 pode acessar o keycloak pelo endereço
+
+https://kiriland.unb.br/keycloak/realms/grupo01/account/.
+
+A senha padrão para todos os usernames é a que está na especificação: PseudoPEP2026!
+
+Att.
