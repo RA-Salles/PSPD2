@@ -1,7 +1,14 @@
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, jsonify, g, request
+import grpc
 from app.auth.decorators import require_auth, require_role
 
+import auth_pb2
+import auth_pb2_grpc
+
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+
+auth_channel = grpc.insecure_channel('localhost:50051')
+auth_stub = auth_pb2_grpc.AuthServiceStub(auth_channel)
 
 @api_bp.route("/public")
 def public_endpoint():
@@ -63,3 +70,29 @@ def user_profile():
             },
         }
     )
+
+@api_bp.route("/pacientes/<paciente_id>", methods=['GET'])
+@require_auth 
+def buscar_paciente(paciente_id):
+    auth_header = request.headers.get('Authorization')
+    token_jwt = auth_header.split(" ")[1]
+
+    try:
+        auth_req = auth_pb2.AuthRequest(
+            jwt_token=token_jwt,
+            requested_scope="ResumoClinico", 
+            target_id=paciente_id
+        )
+        auth_resposta = auth_stub.VerifyAccess(auth_req)
+        
+    except grpc.RpcError as e:
+        return jsonify({"erro": "Serviço de autorização indisponível"}), 500
+
+    if auth_resposta.access_level == "DENY":
+        return jsonify({"erro": "Acesso negado pelas regras do hospital"}), 403
+
+    return jsonify({
+        "mensagem": "Acesso autorizado",
+        "nivel_concedido": auth_resposta.access_level,
+        "usuario_keycloak": g.username 
+    })

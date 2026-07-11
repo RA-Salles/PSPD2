@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package hospital.auth;
+
+service AuthService {
+  // valida o JWT e retorna o nível de acesso
+  rpc VerifyAccess (AuthRequest) returns (AuthResponse);
+}
+
+message AuthRequest {
+  string jwt_token = 1;         // token enviado pelo Frontend
+  string requested_scope = 2;   // Ex: "ResumoClinico" ou "ResumoCoorte"
+  string target_id = 3;         // Ex: ID do paciente ("P000001") ou projeto ("PRJ01")
+}
+
+message AuthResponse {
+  string access_level = 1;      // "FULL", "PARTIAL", "ANONYMIZED", "AGGREGATED" ou "DENY"
+}
