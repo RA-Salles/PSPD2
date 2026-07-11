@@ -13,15 +13,15 @@ auth_stub = auth_pb2_grpc.AuthServiceStub(auth_channel)
 @api_bp.route("/public")
 def public_endpoint():
     """Accessible without authentication."""
-    return jsonify({"message": "This is a public endpoint"})
+    return jsonify({"message": "Endpoint público"})
 
 @api_bp.route("/protected")
 @require_auth
 def protected_endpoint():
-    """Requires a valid access token."""
+    """Requer token válido."""
     return jsonify(
         {
-            "message": "You are authenticated",
+            "message": "autenticação bem-sucedida",
             "user_id": g.user_id,
             "username": g.username,
             "email": g.email,
@@ -32,10 +32,10 @@ def protected_endpoint():
 @api_bp.route("/admin")
 @require_role("admin")
 def admin_endpoint():
-    """Requires the admin role."""
+    """Requer admin para acessar."""
     return jsonify(
         {
-            "message": "Welcome, admin",
+            "message": "Bem-vindo, admin",
             "username": g.username,
         }
     )
@@ -43,10 +43,10 @@ def admin_endpoint():
 @api_bp.route("/manager")
 @require_role("admin", "manager")
 def manager_endpoint():
-    """Requires admin or manager role."""
+    """Requer admin ou manager para acessar."""
     return jsonify(
         {
-            "message": "Welcome to the management area",
+            "message": "Bem-vindo à área de gestão",
             "username": g.username,
             "roles": g.roles,
         }
