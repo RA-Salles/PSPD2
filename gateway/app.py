@@ -4,7 +4,7 @@ import grpc
 import auth_pb2
 import auth_pb2_grpc
 
-app = Flask(__name__)
+app = create_app()
 
 # Configura o canalpara conversar com Auth
 auth_channel = grpc.insecure_channel('localhost:50051')

@@ -19,5 +19,11 @@ you'll prolly need flask.
 and grpcio
 and that's it!
 
+## The keycloak code
+
+Graciously provided by [skycloak, in this article!](https://skycloak.io/blog/keycloak-flask-python-authentication/)
+
+
+
 
 
