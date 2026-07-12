@@ -10,9 +10,6 @@ from datetime import date, datetime
 from statistics import mean, median
 from typing import Any, Iterable
 
-import transform_pb2
-import transform_pb2_grpc
-
 
 VALID_ACCESS_LEVELS = {"FULL", "PARTIAL", "ANONYMIZED", "AGGREGATED"}
 

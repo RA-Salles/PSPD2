@@ -4,6 +4,7 @@ from concurrent import futures
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from prometheus_client import start_http_server
 
 import patient_pb2
 import patient_pb2_grpc
@@ -20,10 +21,7 @@ DB_USER = os.getenv("DB_USER", "grupo02_user")
 DB_PASS = os.getenv("DB_PASS", "123@g02")
 
 # Conexão do cliente gRPC pro Data Transform
-DATA_TRANSFORM_ADDRESS = "localhost:50053"
-
-#Quando formos migrar pro kubernetes:
-# DATA_TRANSFORM_ADDRESS = "data-transform:50053"
+DATA_TRANSFORM_ADDRESS = os.getenv("DATA_TRANSFORM_ADDRESS", "localhost:50053")
 
 transform_channel = grpc.insecure_channel(DATA_TRANSFORM_ADDRESS)
 
@@ -167,22 +165,22 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
                 }
                 
                 payload_em_json = json.dumps(
-                pacote_resposta,
-                default=str,
-                ensure_ascii=False
-            )
+                    pacote_resposta,
+                    default=str,
+                    ensure_ascii=False
+                )
 
-            resposta_transformada = transform_stub.TransformToFHIR(
-                transform_pb2.TransformRequest(
-                    raw_database_json=payload_em_json,
-                    access_level=nivel_acesso_concedido
-                ),
-                timeout=10
-            )
+                resposta_transformada = transform_stub.TransformToFHIR(
+                    transform_pb2.TransformRequest(
+                        raw_database_json=payload_em_json,
+                        access_level=nivel_acesso_concedido
+                    ),
+                    timeout=10
+                )
 
-            yield patient_pb2.PatientDataResponse(
-                raw_database_json=resposta_transformada.fhir_json_payload
-            )
+                yield patient_pb2.PatientDataResponse(
+                    raw_database_json=resposta_transformada.fhir_json_payload
+                )
                 
             cursor.close()
             conexao.close()
@@ -193,6 +191,7 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
 
 
 def iniciar_servidor():
+    start_http_server(int(os.getenv("METRICS_PORT", "8000")))
     servidor_grpc = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     patient_pb2_grpc.add_PatientDataServiceServicer_to_server(PatientDataServiceServicer(), servidor_grpc)
     servidor_grpc.add_insecure_port('[::]:50052')

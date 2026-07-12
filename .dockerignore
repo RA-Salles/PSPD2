@@ -1,0 +1,10 @@
+.git
+.gitignore
+**/__pycache__
+**/*.pyc
+**/.venv
+frontend/node_modules
+node_modules
+docs
+*.zip
+teste_*.py

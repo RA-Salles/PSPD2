@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: grupo-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: auth
+          image: orlandirodrigo/pspd2-auth:v1
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: pspd2-config
+          ports:
+            - name: grpc
+              containerPort: 50051
+            - name: metrics
+              containerPort: 8000
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: grupo-2
+spec:
+  selector:
+    app: auth
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: grpc
+    - name: metrics
+      port: 8000
+      targetPort: metrics

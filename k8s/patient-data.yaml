@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-data
+  namespace: grupo-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-data
+  template:
+    metadata:
+      labels:
+        app: patient-data
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: patient-data
+          image: orlandirodrigo/pspd2-patient-data:v1
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: pspd2-config
+          env:
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: pspd2-secrets
+                  key: db-password
+          ports:
+            - name: grpc
+              containerPort: 50052
+            - name: metrics
+              containerPort: 8000
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 750m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-data
+  namespace: grupo-2
+spec:
+  selector:
+    app: patient-data
+  ports:
+    - name: grpc
+      port: 50052
+      targetPort: grpc
+    - name: metrics
+      port: 8000
+      targetPort: metrics

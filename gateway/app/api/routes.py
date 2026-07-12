@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, g, request
 import grpc
 import requests
 import json
+import os
 
 import auth_pb2
 import auth_pb2_grpc
@@ -11,10 +12,17 @@ import patient_pb2_grpc
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
-auth_channel = grpc.insecure_channel('localhost:50051')
+AUTH_ADDRESS = os.getenv("AUTH_ADDRESS", "localhost:50051")
+PATIENT_DATA_ADDRESS = os.getenv("PATIENT_DATA_ADDRESS", "localhost:50052")
+KEYCLOAK_TOKEN_URL = os.getenv(
+    "KEYCLOAK_TOKEN_URL",
+    "https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/token"
+)
+
+auth_channel = grpc.insecure_channel(AUTH_ADDRESS)
 auth_stub = auth_pb2_grpc.AuthServiceStub(auth_channel)
 
-patient_channel = grpc.insecure_channel('localhost:50052')
+patient_channel = grpc.insecure_channel(PATIENT_DATA_ADDRESS)
 patient_stub = patient_pb2_grpc.PatientDataServiceStub(patient_channel)
 
 @api_bp.route("/public")
@@ -90,13 +98,10 @@ def buscar_paciente(paciente_id):
             requested_scope = "ResumoClinico", 
             target_id       = paciente_id
         )
-        auth_resposta = auth_stub.VerifyAccess(auth_req)
+        auth_resposta = auth_stub.VerifyAccess(auth_req, timeout=10)
         
     except grpc.RpcError as e:
         return jsonify({"erro": "Serviço de autorização indisponível"}), 500
-
-    if auth_resposta.access_level == "DENY":
-        return jsonify({"erro": "Acesso negado pelas regras do hospital"}), 403
 
     if auth_resposta.access_level == "DENY":
         return jsonify({"erro": "Acesso negado pelas regras do hospital"}), 403
@@ -106,7 +111,7 @@ def buscar_paciente(paciente_id):
             patient_id   = paciente_id,
             access_level = auth_resposta.access_level
         )
-        patient_data = patient_stub.GetSinglePatientData(patient_req)
+        patient_data = patient_stub.GetSinglePatientData(patient_req, timeout=30)
         
         try:
             dados_fhir = json.loads(patient_data.raw_database_json)
@@ -141,8 +146,7 @@ def proxy_login():
     }
     
     try:
-        keycloak_url = "https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/token"
-        resposta_keycloak = requests.post(keycloak_url, data=payload)
+        resposta_keycloak = requests.post(KEYCLOAK_TOKEN_URL, data=payload, timeout=15)
         
         if resposta_keycloak.status_code == 200:
             return jsonify(resposta_keycloak.json()), 200
@@ -151,55 +155,3 @@ def proxy_login():
             
     except Exception as e:
         return jsonify({"erro": f"Erro de comunicação com Keycloak: {str(e)}"}), 500
-    
-
-@api_bp.route("/coorte/<condicao>", methods=['GET'])
-def buscar_coorte(condicao):
-    auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return jsonify({"erro": "Token não fornecido"}), 401
-        
-    token_jwt = auth_header.split(" ")[1]
-
-    try:
-        auth_req = auth_pb2.AuthRequest(
-            jwt_token=token_jwt,
-            requested_scope="ResumoCoorte", 
-            target_id="PROJETO_01" 
-        )
-        auth_resposta = auth_stub.VerifyAccess(auth_req)
-        
-    except grpc.RpcError as e:
-        return jsonify({"erro": "Serviço de autorização indisponível"}), 500
-
-    if auth_resposta.access_level == "DENY":
-        return jsonify({"erro": "Acesso negado: Apenas pesquisadores podem buscar coortes."}), 403
-
-    try:
-        cohort_req = patient_pb2.CohortRequest(
-            project_id="PROJETO_01",
-            condition_code=condicao,
-            access_level=auth_resposta.access_level
-        )
-        
-        respostas_stream = patient_stub.StreamCohortData(cohort_req)
-        
-        todos_os_lotes = []
-        for lote in respostas_stream:
-            try:
-                dados_fhir = json.loads(lote.raw_database_json)
-                todos_os_lotes.append(dados_fhir)
-            except:
-                todos_os_lotes.append(lote.raw_database_json)
-                
-        if not todos_os_lotes:
-            return jsonify({"erro": f"Nenhum paciente encontrado com a condição: {condicao}"}), 404
-
-        return jsonify({
-            "mensagem": "Acesso autorizado (Coorte)",
-            "nivel_concedido": auth_resposta.access_level,
-            "resposta": todos_os_lotes
-        }), 200
-        
-    except grpc.RpcError as e:
-        return jsonify({"erro": f"Falha nos microsserviços: {e.details()}"}), 500

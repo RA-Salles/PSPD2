@@ -1,0 +1,73 @@
+services:
+  auth:
+    image: orlandirodrigo/pspd2-auth:v1
+    build:
+      context: .
+      dockerfile: auth/Dockerfile
+    environment:
+      KEYCLOAK_USERINFO_URL: https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/userinfo
+    ports:
+      - "50051:50051"
+    restart: unless-stopped
+
+  data-transform:
+    image: orlandirodrigo/pspd2-data-transform:v1
+    build:
+      context: .
+      dockerfile: datatransf/Dockerfile
+    environment:
+      GRPC_PORT: "50053"
+      METRICS_PORT: "8000"
+      PSEUDONYM_SECRET: ${PSEUDONYM_SECRET:-desenvolvimento-local-trocar}
+    ports:
+      - "50053:50053"
+      - "8000:8000"
+    restart: unless-stopped
+
+  patient-data:
+    image: orlandirodrigo/pspd2-patient-data:v1
+    build:
+      context: .
+      dockerfile: patientdata/Dockerfile
+    environment:
+      DB_HOST: host.docker.internal
+      DB_PORT: "5433"
+      DB_NAME: pseudopep_g02
+      DB_USER: grupo02_user
+      DB_PASS: ${DB_PASS}
+      DATA_TRANSFORM_ADDRESS: data-transform:50053
+    depends_on:
+      - data-transform
+    ports:
+      - "50052:50052"
+    restart: unless-stopped
+
+  gateway:
+    image: orlandirodrigo/pspd2-gateway:v1
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment:
+      AUTH_ADDRESS: auth:50051
+      PATIENT_DATA_ADDRESS: patient-data:50052
+      KEYCLOAK_TOKEN_URL: https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/token
+      FLASK_DEBUG: "false"
+    depends_on:
+      - auth
+      - patient-data
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  frontend:
+    image: orlandirodrigo/pspd2-frontend:v1
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5000/api
+    depends_on:
+      - gateway
+    ports:
+      - "3000:80"
+    restart: unless-stopped

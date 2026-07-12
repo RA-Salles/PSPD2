@@ -1,10 +1,15 @@
 import grpc
 from concurrent import futures
 import requests
+import os
+from prometheus_client import start_http_server
 import auth_pb2
 import auth_pb2_grpc
 
-USERINFO_URL = "https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/userinfo"
+USERINFO_URL = os.getenv(
+    "KEYCLOAK_USERINFO_URL",
+    "https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/userinfo"
+)
 
 class AuthServiceServicer(auth_pb2_grpc.AuthServiceServicer):
     def VerifyAccess(self, request, context):
@@ -13,7 +18,7 @@ class AuthServiceServicer(auth_pb2_grpc.AuthServiceServicer):
         
         try:
             headers = {"Authorization": f"Bearer {token}"}
-            resposta = requests.get(USERINFO_URL, headers=headers)
+            resposta = requests.get(USERINFO_URL, headers=headers, timeout=15)
             
             if resposta.status_code != 200:
                 print(f"DEBUG - Erro no userinfo: {resposta.text}")
@@ -40,6 +45,7 @@ class AuthServiceServicer(auth_pb2_grpc.AuthServiceServicer):
             return auth_pb2.AuthResponse(access_level="DENY")
 
 def serve():
+    start_http_server(int(os.getenv("METRICS_PORT", "8000")))
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     auth_pb2_grpc.add_AuthServiceServicer_to_server(AuthServiceServicer(), server)
     server.add_insecure_port('[::]:50051')

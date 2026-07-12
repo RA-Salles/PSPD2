@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-transform
+  namespace: grupo-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-transform
+  template:
+    metadata:
+      labels:
+        app: data-transform
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: data-transform
+          image: orlandirodrigo/pspd2-data-transform:v1
+          imagePullPolicy: Always
+          env:
+            - name: PSEUDONYM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pspd2-secrets
+                  key: pseudonym-secret
+          ports:
+            - name: grpc
+              containerPort: 50053
+            - name: metrics
+              containerPort: 8000
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-transform
+  namespace: grupo-2
+spec:
+  selector:
+    app: data-transform
+  ports:
+    - name: grpc
+      port: 50053
+      targetPort: grpc
+    - name: metrics
+      port: 8000
+      targetPort: metrics

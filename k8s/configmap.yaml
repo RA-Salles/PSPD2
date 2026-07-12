@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pspd2-config
+  namespace: grupo-2
+data:
+  DB_HOST: "192.168.122.1"
+  DB_PORT: "5432"
+  DB_NAME: "pseudopep_g02"
+  DB_USER: "grupo02_user"
+  AUTH_ADDRESS: "auth:50051"
+  PATIENT_DATA_ADDRESS: "patient-data:50052"
+  DATA_TRANSFORM_ADDRESS: "data-transform:50053"
+  KEYCLOAK_TOKEN_URL: "https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/token"
+  KEYCLOAK_USERINFO_URL: "https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/userinfo"
