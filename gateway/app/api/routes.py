@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, g, request
 import grpc
 from app.auth.decorators import require_auth, require_role
+import requests
 
 import auth_pb2
 import auth_pb2_grpc
@@ -96,3 +97,30 @@ def buscar_paciente(paciente_id):
         "nivel_concedido": auth_resposta.access_level,
         "usuario_keycloak": g.username 
     })
+
+@api_bp.route("/login", methods=["POST"])
+def proxy_login():
+    """Rota que serve de ponte entre o Frontend e o Keycloak para burlar o CORS"""
+    dados = request.get_json()
+    username = dados.get("username")
+    password = dados.get("password")
+
+    payload = {
+        "client_id": "admin-cli",
+        "grant_type": "password",
+        "username": username,
+        "password": password,
+        "scope": "openid"
+    }
+    
+    try:
+        keycloak_url = "https://kiriland.unb.br/keycloak/realms/grupo02/protocol/openid-connect/token"
+        resposta_keycloak = requests.post(keycloak_url, data=payload)
+        
+        if resposta_keycloak.status_code == 200:
+            return jsonify(resposta_keycloak.json()), 200
+        else:
+            return jsonify({"erro": "Usuário ou senha inválidos"}), 401
+            
+    except Exception as e:
+        return jsonify({"erro": f"Erro de comunicação com Keycloak: {str(e)}"}), 500
