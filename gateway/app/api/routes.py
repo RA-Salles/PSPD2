@@ -106,7 +106,7 @@ def proxy_login():
     password = dados.get("password")
 
     payload = {
-        "client_id": "admin-cli",
+        "client_id": "admin-cli", 
         "grant_type": "password",
         "username": username,
         "password": password,
