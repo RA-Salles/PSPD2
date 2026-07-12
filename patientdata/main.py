@@ -59,6 +59,7 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
         dados_empacotados = {
             "nivel_permitido": nivel_acesso_concedido,
             "paciente": None,
+            "atendimentos": [],
             "eventos_clinicos": []
         }
 
@@ -67,11 +68,35 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
             cursor = conexao.cursor()
                     
             # Busca os dados demográficos
-            cursor.execute("SELECT * FROM patients WHERE id_paciente = %s", (id_paciente_alvo,))
+            cursor.execute(
+                "SELECT * FROM patients WHERE patient_id = %s",
+                (id_paciente_alvo,)
+            )
             dados_empacotados["paciente"] = cursor.fetchone()
+
+            # Busca os atendimentos
+            cursor.execute(
+                """
+                SELECT *
+                FROM encounters
+                WHERE patient_id = %s
+                ORDER BY start_date
+                """,
+                (id_paciente_alvo,)
+            )
+
+            dados_empacotados["atendimentos"] = cursor.fetchall()
                     
             # Busca o histórico clínico
-            cursor.execute("SELECT * FROM clinical_events WHERE id_paciente = %s", (id_paciente_alvo,))
+            cursor.execute(
+                """
+                SELECT *
+                FROM clinical_events
+                WHERE patient_id = %s
+                ORDER BY event_date
+                """,
+                (id_paciente_alvo,)
+            )
             dados_empacotados["eventos_clinicos"] = cursor.fetchall()
                     
             cursor.close()
@@ -121,9 +146,11 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
             cursor = conexao.cursor(name="cursor_pesquisa_coorte")
             
             consulta_sql = """
-                SELECT p.* FROM patients p
-                JOIN clinical_events c ON p.id_paciente = c.id_paciente
-                WHERE c.codigo_tipo_evento = %s
+                SELECT DISTINCT p.*
+                FROM patients p
+                JOIN clinical_events c
+                ON p.patient_id = c.patient_id
+                WHERE c.code = %s
             """
             cursor.execute(consulta_sql, (codigo_da_condicao,))
             
