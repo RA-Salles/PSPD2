@@ -151,3 +151,55 @@ def proxy_login():
             
     except Exception as e:
         return jsonify({"erro": f"Erro de comunicação com Keycloak: {str(e)}"}), 500
+    
+
+@api_bp.route("/coorte/<condicao>", methods=['GET'])
+def buscar_coorte(condicao):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"erro": "Token não fornecido"}), 401
+        
+    token_jwt = auth_header.split(" ")[1]
+
+    try:
+        auth_req = auth_pb2.AuthRequest(
+            jwt_token=token_jwt,
+            requested_scope="ResumoCoorte", 
+            target_id="PROJETO_01" 
+        )
+        auth_resposta = auth_stub.VerifyAccess(auth_req)
+        
+    except grpc.RpcError as e:
+        return jsonify({"erro": "Serviço de autorização indisponível"}), 500
+
+    if auth_resposta.access_level == "DENY":
+        return jsonify({"erro": "Acesso negado: Apenas pesquisadores podem buscar coortes."}), 403
+
+    try:
+        cohort_req = patient_pb2.CohortRequest(
+            project_id="PROJETO_01",
+            condition_code=condicao,
+            access_level=auth_resposta.access_level
+        )
+        
+        respostas_stream = patient_stub.StreamCohortData(cohort_req)
+        
+        todos_os_lotes = []
+        for lote in respostas_stream:
+            try:
+                dados_fhir = json.loads(lote.raw_database_json)
+                todos_os_lotes.append(dados_fhir)
+            except:
+                todos_os_lotes.append(lote.raw_database_json)
+                
+        if not todos_os_lotes:
+            return jsonify({"erro": f"Nenhum paciente encontrado com a condição: {condicao}"}), 404
+
+        return jsonify({
+            "mensagem": "Acesso autorizado (Coorte)",
+            "nivel_concedido": auth_resposta.access_level,
+            "resposta": todos_os_lotes
+        }), 200
+        
+    except grpc.RpcError as e:
+        return jsonify({"erro": f"Falha nos microsserviços: {e.details()}"}), 500

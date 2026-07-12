@@ -1,34 +1,36 @@
 import { useState } from 'react'
 
 function App() {
-  const [username, setUsername] = useState('med.cardoso')
+  const [username, setUsername] = useState('pes.mendes')
   const [password, setPassword] = useState('PseudoPEP2026!')
   const [token, setToken] = useState(null)
   
-  const [pacienteId, setPacienteId] = useState('P000001')
+  // Estados para Busca Individual
+  const [pacienteId, setPacienteId] = useState('P020000001')
   const [dadosPaciente, setDadosPaciente] = useState(null)
+  
+  // Estados para Busca de Coorte
+  const [condicao, setCondicao] = useState('DIABETES')
+  const [dadosCoorte, setDadosCoorte] = useState(null)
+
   const [erro, setErro] = useState(null)
   const [carregando, setCarregando] = useState(false)
 
-  // faz o login via o gateway
+  // Função de Login
   const fazerLogin = async (e) => {
     e.preventDefault()
     setErro(null)
     setCarregando(true)
-
     try {
       const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       })
-
       const data = await response.json()
-
       if (!response.ok) {
         throw new Error(data.erro || 'Falha ao autenticar no Keycloak')
       }
-
       setToken(data.access_token) 
     } catch (err) {
       setErro(err.message)
@@ -37,12 +39,12 @@ function App() {
     }
   }
 
-  // função para buscar os dados do Paciente
+  // Busca Paciente Individual
   const buscarPaciente = async () => {
     setErro(null)
     setDadosPaciente(null)
+    setDadosCoorte(null)
     setCarregando(true)
-
     try {
       const response = await fetch(`http://localhost:5000/api/pacientes/${pacienteId}`, {
         method: 'GET',
@@ -51,14 +53,37 @@ function App() {
           'Content-Type': 'application/json'
         }
       })
-
       const data = await response.json()
-
       if (!response.ok) {
         throw new Error(data.erro || data.error || 'Acesso Negado')
       }
-
       setDadosPaciente(data)
+    } catch (err) {
+      setErro(err.message)
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  // Busca Coorte (Pesquisadores)
+  const buscarCoorte = async () => {
+    setErro(null)
+    setDadosPaciente(null)
+    setDadosCoorte(null)
+    setCarregando(true)
+    try {
+      const response = await fetch(`http://localhost:5000/api/coorte/${condicao}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.erro || data.error || 'Acesso Negado')
+      }
+      setDadosCoorte(data)
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -69,6 +94,7 @@ function App() {
   const fazerLogout = () => {
     setToken(null)
     setDadosPaciente(null)
+    setDadosCoorte(null)
   }
 
   // --- TELA DE LOGIN ---
@@ -79,17 +105,17 @@ function App() {
         <form onSubmit={fazerLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input 
             type="text" 
-            placeholder="Usuário (Ex: med.cardoso)" 
+            placeholder="Usuário (Ex: pes.mendes)" 
             value={username} 
             onChange={e => setUsername(e.target.value)} 
-            style={{ padding: '10px' }}
+            style={{ padding: '10px' }} 
           />
           <input 
             type="password" 
             placeholder="Senha" 
             value={password} 
             onChange={e => setPassword(e.target.value)} 
-            style={{ padding: '10px' }}
+            style={{ padding: '10px' }} 
           />
           <button type="submit" disabled={carregando} style={{ padding: '10px', backgroundColor: '#0056b3', color: 'white', border: 'none' }}>
             {carregando ? 'Autenticando...' : 'Entrar'}
@@ -108,14 +134,15 @@ function App() {
         <button onClick={fazerLogout} style={{ padding: '8px', backgroundColor: '#dc3545', color: 'white', border: 'none', height: '35px' }}>Sair</button>
       </div>
       
+      {/* Busca Prontuário Clínico */}
       <div style={{ padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-        <p><strong>Buscar Dados:</strong></p>
+        <p><strong>Buscar Paciente (Médicos/Estagiários):</strong></p>
         <div style={{ display: 'flex', gap: '10px' }}>
           <input 
             type="text" 
-            value={pacienteId}
-            onChange={(e) => setPacienteId(e.target.value)}
-            style={{ padding: '10px', flex: 1 }}
+            value={pacienteId} 
+            onChange={(e) => setPacienteId(e.target.value)} 
+            style={{ padding: '10px', flex: 1 }} 
           />
           <button onClick={buscarPaciente} disabled={carregando} style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none' }}>
             Buscar
@@ -123,13 +150,41 @@ function App() {
         </div>
       </div>
 
-      {erro && <div style={{ padding: '15px', color: '#cc0000', backgroundColor: '#ffebee', marginTop: '20px' }}>{erro}</div>}
+      {/* Busca de Coorte para Pesquisa */}
+      <div style={{ padding: '20px', backgroundColor: '#e3f2fd', borderRadius: '8px', marginTop: '20px' }}>
+        <p><strong>Buscar Coorte (Pesquisadores):</strong></p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input 
+            type="text" 
+            value={condicao} 
+            onChange={(e) => setCondicao(e.target.value)} 
+            placeholder="Código da Condição (Ex: DIABETES)"
+            style={{ padding: '10px', flex: 1 }} 
+          />
+          <button onClick={buscarCoorte} disabled={carregando} style={{ padding: '10px 20px', backgroundColor: '#17a2b8', color: 'white', border: 'none' }}>
+            Buscar Coorte
+          </button>
+        </div>
+      </div>
 
+      {erro && <div style={{ padding: '15px', color: '#cc0000', backgroundColor: '#ffebee', marginTop: '20px' }}>{erro}</div>}
+      
+      {/* Exibe Resultado Individual */}
       {dadosPaciente && (
         <div style={{ padding: '20px', backgroundColor: '#e8f5e9', border: '1px solid #c8e6c9', borderRadius: '8px', marginTop: '20px' }}>
-          <h2 style={{ marginTop: 0 }}>Resultado:</h2>
+          <h2 style={{ marginTop: 0 }}>Resultado Individual:</h2>
           <pre style={{ whiteSpace: 'pre-wrap', backgroundColor: '#fff', padding: '15px' }}>
             {JSON.stringify(dadosPaciente, null, 2)}
+          </pre>
+        </div>
+      )}
+
+      {/* Exibe Resultado Coorte */}
+      {dadosCoorte && (
+        <div style={{ padding: '20px', backgroundColor: '#e1f5fe', border: '1px solid #b3e5fc', borderRadius: '8px', marginTop: '20px' }}>
+          <h2 style={{ marginTop: 0 }}>Resultado Coorte ({condicao}):</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', backgroundColor: '#fff', padding: '15px' }}>
+            {JSON.stringify(dadosCoorte, null, 2)}
           </pre>
         </div>
       )}
