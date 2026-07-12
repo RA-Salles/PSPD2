@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, g, request
 import grpc
-from app.api.decorators import require_auth, require_role
 import requests
 
 import auth_pb2
@@ -23,7 +22,7 @@ def public_endpoint():
     return jsonify({"message": "Endpoint público"})
 
 @api_bp.route("/protected")
-@require_auth
+
 def protected_endpoint():
     """Requer token válido."""
     return jsonify(
@@ -37,7 +36,7 @@ def protected_endpoint():
     )
 
 @api_bp.route("/admin")
-@require_role("admin")
+
 def admin_endpoint():
     """Requer admin para acessar."""
     return jsonify(
@@ -48,7 +47,7 @@ def admin_endpoint():
     )
 
 @api_bp.route("/manager")
-@require_role("admin", "manager")
+
 def manager_endpoint():
     """Requer admin ou manager para acessar."""
     return jsonify(
@@ -60,7 +59,7 @@ def manager_endpoint():
     )
 
 @api_bp.route("/profile")
-@require_auth
+
 def user_profile():
     """Return the full decoded token payload."""
     return jsonify(
@@ -79,7 +78,7 @@ def user_profile():
     )
 
 @api_bp.route("/pacientes/<paciente_id>", methods=['GET'])
-@require_auth 
+
 def buscar_paciente(paciente_id):
     auth_header = request.headers.get('Authorization')
     token_jwt = auth_header.split(" ")[1]
