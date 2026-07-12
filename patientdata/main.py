@@ -1,3 +1,4 @@
+import os #novo import pra definir portas pro banco
 import grpc
 from concurrent import futures
 import json
@@ -12,10 +13,11 @@ import transform_pb2_grpc
 
 
 # Configurações do Banco de Dados 
-DB_HOST = "localhost" 
-DB_NAME = "pseudopep_g02"
-DB_USER = "grupo02_user"
-DB_PASS = "123@g02"
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
+DB_NAME = os.getenv("DB_NAME", "pseudopep_g02")
+DB_USER = os.getenv("DB_USER", "grupo02_user")
+DB_PASS = os.getenv("DB_PASS", "")
 
 # Conexão do cliente gRPC pro Data Transform
 DATA_TRANSFORM_ADDRESS = "localhost:50053"
@@ -38,6 +40,7 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
         """Estabelece a conexão com o banco de dados retornando dicionários."""
         return psycopg2.connect(
             host=DB_HOST,
+            port=DB_PORT,
             database=DB_NAME,
             user=DB_USER,
             password=DB_PASS,
@@ -56,6 +59,7 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
         dados_empacotados = {
             "nivel_permitido": nivel_acesso_concedido,
             "paciente": None,
+            "atendimentos": [],
             "eventos_clinicos": []
         }
 
@@ -64,11 +68,35 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
             cursor = conexao.cursor()
                     
             # Busca os dados demográficos
-            cursor.execute("SELECT * FROM patients WHERE id_paciente = %s", (id_paciente_alvo,))
+            cursor.execute(
+                "SELECT * FROM patients WHERE patient_id = %s",
+                (id_paciente_alvo,)
+            )
             dados_empacotados["paciente"] = cursor.fetchone()
+
+            # Busca os atendimentos
+            cursor.execute(
+                """
+                SELECT *
+                FROM encounters
+                WHERE patient_id = %s
+                ORDER BY start_date
+                """,
+                (id_paciente_alvo,)
+            )
+
+            dados_empacotados["atendimentos"] = cursor.fetchall()
                     
             # Busca o histórico clínico
-            cursor.execute("SELECT * FROM clinical_events WHERE id_paciente = %s", (id_paciente_alvo,))
+            cursor.execute(
+                """
+                SELECT *
+                FROM clinical_events
+                WHERE patient_id = %s
+                ORDER BY event_date
+                """,
+                (id_paciente_alvo,)
+            )
             dados_empacotados["eventos_clinicos"] = cursor.fetchall()
                     
             cursor.close()
@@ -118,9 +146,11 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
             cursor = conexao.cursor(name="cursor_pesquisa_coorte")
             
             consulta_sql = """
-                SELECT p.* FROM patients p
-                JOIN clinical_events c ON p.id_paciente = c.id_paciente
-                WHERE c.codigo_tipo_evento = %s
+                SELECT DISTINCT p.*
+                FROM patients p
+                JOIN clinical_events c
+                ON p.patient_id = c.patient_id
+                WHERE c.code = %s
             """
             cursor.execute(consulta_sql, (codigo_da_condicao,))
             
