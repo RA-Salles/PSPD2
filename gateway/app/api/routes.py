@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, g, request
 import grpc
 import requests
+import json
 
 import auth_pb2
 import auth_pb2_grpc
@@ -97,19 +98,32 @@ def buscar_paciente(paciente_id):
     if auth_resposta.access_level == "DENY":
         return jsonify({"erro": "Acesso negado pelas regras do hospital"}), 403
 
-    patient_req = patient_pb2.SinglePatientRequest(
-        patient_id   = paciente_id,
-        access_level = auth_resposta.access_level
-    )
+    if auth_resposta.access_level == "DENY":
+        return jsonify({"erro": "Acesso negado pelas regras do hospital"}), 403
 
-    patient_data = patient_stub.GetSinglePatientData(patient_req)
+    try:
+        patient_req = patient_pb2.SinglePatientRequest(
+            patient_id   = paciente_id,
+            access_level = auth_resposta.access_level
+        )
+        patient_data = patient_stub.GetSinglePatientData(patient_req)
+        
+        try:
+            dados_fhir = json.loads(patient_data.raw_database_json)
+        except:
+            dados_fhir = patient_data.raw_database_json
 
-    return jsonify({
-        "mensagem"         : "Acesso autorizado"            ,
-        "nivel_concedido"  : auth_resposta.access_level     ,
-        "usuario_keycloak" : g.username                     ,
-        "resposta"         : patient_data.raw_database_json 
-    })
+        return jsonify({
+            "mensagem"         : "Acesso autorizado",
+            "nivel_concedido"  : auth_resposta.access_level,
+            "resposta"         : dados_fhir
+        }), 200
+        
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.NOT_FOUND:
+            return jsonify({"erro": "Paciente não existe no banco de dados."}), 404
+            
+        return jsonify({"erro": f"Falha nos microsserviços: {e.details()}"}), 500
 
 @api_bp.route("/login", methods=["POST"])
 def proxy_login():
