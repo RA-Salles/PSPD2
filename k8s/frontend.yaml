@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: orlandirodrigo/pspd2-frontend:v1
+          image: orlandirodrigo/pspd2-frontend:v2
           imagePullPolicy: Always
           ports:
             - name: http
