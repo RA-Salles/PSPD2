@@ -1,6 +1,16 @@
 # PSPD2
 Projeto para adaptar aplicação em banco de dados médicos para arquitetura em microsserviços
 
+## Variáveis do Banco - Grupo 02
+Caso seja necessário colocar no terminal Powershell:
+```
+$env:DB_HOST = "localhost"
+$env:DB_PORT = "5433"
+$env:DB_NAME = "pseudopep_g02"
+$env:DB_USER = "grupo02_user"
+$env:DB_PASS = "123@g02"
+```
+
 # Execução de Testes
 ## I. Executar o teste_data_transform.py:
 1. Na pasta pspd2:
