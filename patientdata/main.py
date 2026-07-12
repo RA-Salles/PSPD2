@@ -1,3 +1,4 @@
+import os #novo import pra definir portas pro banco
 import grpc
 from concurrent import futures
 import json
@@ -12,10 +13,11 @@ import transform_pb2_grpc
 
 
 # Configurações do Banco de Dados 
-DB_HOST = "localhost" 
-DB_NAME = "pseudopep_g02"
-DB_USER = "grupo02_user"
-DB_PASS = "123@g02"
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
+DB_NAME = os.getenv("DB_NAME", "pseudopep_g02")
+DB_USER = os.getenv("DB_USER", "grupo02_user")
+DB_PASS = os.getenv("DB_PASS", "")
 
 # Conexão do cliente gRPC pro Data Transform
 DATA_TRANSFORM_ADDRESS = "localhost:50053"
@@ -38,6 +40,7 @@ class PatientDataServiceServicer(patient_pb2_grpc.PatientDataServiceServicer):
         """Estabelece a conexão com o banco de dados retornando dicionários."""
         return psycopg2.connect(
             host=DB_HOST,
+            port=DB_PORT,
             database=DB_NAME,
             user=DB_USER,
             password=DB_PASS,
