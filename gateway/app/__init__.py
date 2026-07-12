@@ -14,10 +14,10 @@ def create_app(config_class=Config):
     )
 
     # Register blueprints
-    from app.auth.routes import auth_bp
+    #from app.auth.routes import auth_bp
     from app.api.routes import api_bp
 
-    app.register_blueprint(auth_bp)
+    #app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
 
     # Health check
