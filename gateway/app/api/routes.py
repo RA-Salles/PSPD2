@@ -1,15 +1,21 @@
 from flask import Blueprint, jsonify, g, request
 import grpc
-from app.auth.decorators import require_auth, require_role
+from app.api.decorators import require_auth, require_role
 import requests
 
 import auth_pb2
 import auth_pb2_grpc
 
+import patient_pb2
+import patient_pb2_grpc
+
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 auth_channel = grpc.insecure_channel('localhost:50051')
 auth_stub = auth_pb2_grpc.AuthServiceStub(auth_channel)
+
+patient_channel = grpc.insecure_channel('localhost:50052')
+patient_stub = patient_pb2_grpc.PatientDataServiceStub(patient_channel)
 
 @api_bp.route("/public")
 def public_endpoint():
@@ -80,9 +86,9 @@ def buscar_paciente(paciente_id):
 
     try:
         auth_req = auth_pb2.AuthRequest(
-            jwt_token=token_jwt,
-            requested_scope="ResumoClinico", 
-            target_id=paciente_id
+            jwt_token       = token_jwt,
+            requested_scope = "ResumoClinico", 
+            target_id       = paciente_id
         )
         auth_resposta = auth_stub.VerifyAccess(auth_req)
         
@@ -92,10 +98,18 @@ def buscar_paciente(paciente_id):
     if auth_resposta.access_level == "DENY":
         return jsonify({"erro": "Acesso negado pelas regras do hospital"}), 403
 
+    patient_req = patient_pb2.SinglePatientRequest(
+        patient_id   = paciente_id,
+        access_level = auth_resposta.access_level
+    )
+
+    patient_data = patient_stub.GetSinglePatientData(patient_req)
+
     return jsonify({
-        "mensagem": "Acesso autorizado",
-        "nivel_concedido": auth_resposta.access_level,
-        "usuario_keycloak": g.username 
+        "mensagem"         : "Acesso autorizado"            ,
+        "nivel_concedido"  : auth_resposta.access_level     ,
+        "usuario_keycloak" : g.username                     ,
+        "resposta"         : patient_data.raw_database_json 
     })
 
 @api_bp.route("/login", methods=["POST"])
