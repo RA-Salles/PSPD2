@@ -17,6 +17,11 @@ auth_stub = auth_pb2_grpc.AuthServiceStub(auth_channel)
 patient_channel = grpc.insecure_channel('localhost:50052')
 patient_stub = patient_pb2_grpc.PatientDataServiceStub(patient_channel)
 
+# api usage metrics
+user_usage_metric = {} # counts user login;
+patient_usage_metric = {} # by user -> {userid : times used} -> {1: 32, 2 : 0, 3 : 173, ...} -> counts time some user has called patient_data;
+
+
 @api_bp.route("/public")
 def public_endpoint():
     """Accessible without authentication."""
@@ -83,6 +88,7 @@ def user_profile():
 def buscar_paciente(paciente_id):
     auth_header = request.headers.get('Authorization')
     token_jwt = auth_header.split(" ")[1]
+    
 
     try:
         auth_req = auth_pb2.AuthRequest(
@@ -104,6 +110,12 @@ def buscar_paciente(paciente_id):
     )
 
     patient_data = patient_stub.GetSinglePatientData(patient_req)
+
+    if g.username not in patient_usage_metric:
+        patient_usage_metric[g.username] = 1
+    else:
+         patient_usage_metric[g.username] += 1
+
 
     return jsonify({
         "mensagem"         : "Acesso autorizado"            ,
@@ -132,9 +144,24 @@ def proxy_login():
         resposta_keycloak = requests.post(keycloak_url, data=payload)
         
         if resposta_keycloak.status_code == 200:
+            g.username = username
+            if username not in user_usage_metric:
+                user_usage_metric[username] = 1
+            else:
+                user_usage_metric[username] += 1
             return jsonify(resposta_keycloak.json()), 200
         else:
             return jsonify({"erro": "Usuário ou senha inválidos"}), 401
             
     except Exception as e:
         return jsonify({"erro": f"Erro de comunicação com Keycloak: {str(e)}"}), 500
+    
+@api_bp.route('/metrics')
+def metrics():
+    metrics = ""
+    for userid in patient_usage_metric:
+        metrics += 'patient_usage_metric{userid="%s"} %s\n' % (userid, patient_usage_metric[userid])
+        
+    for userid in user_usage_metric:
+        metrics += 'user_usage_metric{userid="%s"} %s\n' % (userid, user_usage_metric[userid])
+    return metrics
