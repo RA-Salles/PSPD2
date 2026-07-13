@@ -63,6 +63,13 @@ python teste_postgres.py
 ```
 # Implantação Docker e Kubernetes 
 
+## IMPORTANTE: Para terminal rodar corretamente:
+```
+$KUBECONFIG = (
+    Resolve-Path .\docs\kubeconfig-grupo-2.yaml
+).Path
+```
+
 Execute os comandos a partir da raiz do projeto no PowerShell. <br>
 Usuários e Senhas:
 
