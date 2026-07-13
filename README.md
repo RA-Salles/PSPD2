@@ -1,6 +1,9 @@
 # PSPD2
 Projeto para adaptar aplicação em banco de dados médicos para arquitetura em microsserviços
 
+## Link para a apresentação:
+https://youtu.be/SSx7qNZbL8I
+
 ## Variáveis do Banco - Grupo 02
 Caso seja necessário colocar no terminal Powershell:
 ```
